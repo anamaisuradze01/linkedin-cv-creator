@@ -1,68 +1,65 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ProfileData } from "@/types/cv";
 import { sampleProfileData } from "@/data/sampleProfile";
-import { CVForm } from "./CVForm";
-import { CVPreview } from "./CVPreview";
-import { LinkedInLoginCard } from "./LinkedInLoginCard";
+import { CVForm } from "@/components/cv/CVForm";
+import { CVPreview } from "@/components/cv/CVPreview";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Sparkles, LogOut, Loader2 } from "lucide-react";
+import { Download, FileText, Sparkles, LogOut, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useLinkedInAuth } from "@/hooks/useLinkedInAuth";
-import { generateCVSummary } from "@/services/api";
+import { useProfile } from "@/hooks/useProfile";
+import { generateCV, downloadCV } from "@/services/api";
 
-export const CVBuilder = () => {
-  const { isAuthenticated, isLoading: authLoading, profile, login, logout } = useLinkedInAuth();
+const CVEditor = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const useSample = searchParams.get("sample") === "true";
+  
+  const { isLoading: authLoading, isAuthenticated, profile, handleLogout } = useProfile();
   const [profileData, setProfileData] = useState<ProfileData>(sampleProfileData);
-  const [usingSampleData, setUsingSampleData] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const cvPreviewRef = useRef<HTMLDivElement>(null);
 
-  // Update profile data when LinkedIn profile is loaded
+  // Load profile data when authenticated
   useEffect(() => {
-    if (profile && isAuthenticated) {
+    if (profile && isAuthenticated && !useSample) {
       setProfileData(prev => ({
         ...prev,
-        ...profile,
-        // Keep existing data if LinkedIn doesn't provide it
-        skills: profile.skills.length > 0 ? profile.skills : prev.skills,
-        education: profile.education.length > 0 ? profile.education : prev.education,
-        experience: profile.experience.length > 0 ? profile.experience : prev.experience,
+        fullName: profile.fullName || prev.fullName,
+        email: profile.email || prev.email,
+        // Keep sample data for other fields that LinkedIn doesn't provide
       }));
-      setUsingSampleData(false);
     }
-  }, [profile, isAuthenticated]);
+  }, [profile, isAuthenticated, useSample]);
 
-  const handleUseSampleData = () => {
-    setProfileData(sampleProfileData);
-    setUsingSampleData(true);
-  };
+  // Redirect to login if not authenticated and not using sample
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && !useSample) {
+      navigate("/");
+    }
+  }, [authLoading, isAuthenticated, useSample, navigate]);
 
   const handleGenerateCV = async () => {
     setIsGenerating(true);
     
     try {
-      const result = await generateCVSummary({
-        name: profileData.fullName,
+      const result = await generateCV({
         title: profileData.title,
-        skills: profileData.skills,
+        skills: profileData.skills.join(", "),
         experience: profileData.experience.map(exp => 
           `${exp.title} at ${exp.company} (${exp.years}): ${exp.description}`
-        ),
-        style: "minimal",
+        ).join("; "),
+        phone: profileData.phone,
       });
       
-      if (result.success && result.summary) {
-        setAiSummary(result.summary);
-        // Update the profile data with the AI-generated summary
-        setProfileData(prev => ({
-          ...prev,
-          summary: result.summary || prev.summary,
-        }));
+      if (result.success) {
+        setDownloadUrl(result.download_url || null);
         toast({
-          title: "CV Enhanced!",
-          description: "Your AI-generated professional summary is ready.",
+          title: "CV Generated!",
+          description: "Your CV is ready for download.",
         });
       } else {
         toast({
@@ -83,7 +80,37 @@ export const CVBuilder = () => {
     }
   };
 
-  // Client-side PDF download
+  const handleDownloadFromBackend = async () => {
+    setIsDownloading(true);
+    
+    try {
+      const success = await downloadCV(downloadUrl || undefined);
+      
+      if (success) {
+        toast({
+          title: "CV Downloaded!",
+          description: "Your CV has been saved as a PDF file.",
+        });
+      } else {
+        toast({
+          title: "Download Failed",
+          description: "Failed to download CV. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading CV:", error);
+      toast({
+        title: "Error",
+        description: "Failed to download CV. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Client-side PDF download as fallback
   const handleDownloadPDF = async () => {
     if (!cvPreviewRef.current) return;
 
@@ -127,21 +154,18 @@ export const CVBuilder = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    setProfileData(sampleProfileData);
-    setUsingSampleData(false);
-    setAiSummary(null);
+  const handleBack = async () => {
+    if (isAuthenticated) {
+      await handleLogout();
+    }
+    navigate("/");
   };
 
-  // Show login card if not authenticated and not using sample data
-  if (!isAuthenticated && !usingSampleData) {
+  if (authLoading && !useSample) {
     return (
-      <LinkedInLoginCard 
-        onLogin={login} 
-        onUseSampleData={handleUseSampleData}
-        isLoading={authLoading}
-      />
+      <div className="min-h-screen bg-form-bg flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
@@ -151,6 +175,9 @@ export const CVBuilder = () => {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="max-w-[1800px] mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={handleBack}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-primary-foreground" />
             </div>
@@ -162,8 +189,8 @@ export const CVBuilder = () => {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            {/* Generate CV Button */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Generate CV Button - calls backend */}
             <Button 
               onClick={handleGenerateCV} 
               disabled={isGenerating}
@@ -175,12 +202,14 @@ export const CVBuilder = () => {
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              {isGenerating ? "Generating..." : "Generate with AI"}
+              <span className="hidden sm:inline">
+                {isGenerating ? "Generating..." : "Generate with AI"}
+              </span>
             </Button>
 
-            {/* Download Button */}
+            {/* Download Button - from backend if generated, else client-side */}
             <Button 
-              onClick={handleDownloadPDF} 
+              onClick={downloadUrl ? handleDownloadFromBackend : handleDownloadPDF} 
               disabled={isDownloading}
               className="gap-2"
             >
@@ -189,47 +218,49 @@ export const CVBuilder = () => {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              {isDownloading ? "Downloading..." : "Download PDF"}
+              <span className="hidden sm:inline">
+                {isDownloading ? "Downloading..." : "Download PDF"}
+              </span>
             </Button>
 
             {/* Logout Button */}
-            {(isAuthenticated || usingSampleData) && (
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleLogout}
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleBack}
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Responsive Two Column Layout */}
       <main className="max-w-[1800px] mx-auto p-4 md:p-6">
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left Column - Form */}
+          {/* Left Column - Form (scrollable on desktop) */}
           <aside className="w-full lg:w-[420px] lg:flex-shrink-0">
             <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
               <CVForm data={profileData} onChange={setProfileData} />
             </div>
           </aside>
 
-          {/* Right Column - Preview */}
+          {/* Right Column - Live Preview */}
           <section className="flex-1 min-w-0">
             <div className="bg-muted/50 rounded-xl p-4 md:p-8 overflow-x-auto">
-              {/* AI Summary Banner */}
-              {aiSummary && (
-                <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              {/* Status Banner */}
+              {downloadUrl && (
+                <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">AI-Enhanced Summary Applied</span>
+                    <Sparkles className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">CV Ready for Download</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">Your professional summary has been updated with AI-generated content.</p>
+                  <p className="text-sm text-muted-foreground">Your AI-generated CV has been created. Click "Download PDF" to save it.</p>
                 </div>
               )}
+              
+              {/* Live CV Preview */}
               <CVPreview ref={cvPreviewRef} data={profileData} />
             </div>
           </section>
@@ -238,3 +269,5 @@ export const CVBuilder = () => {
     </div>
   );
 };
+
+export default CVEditor;
