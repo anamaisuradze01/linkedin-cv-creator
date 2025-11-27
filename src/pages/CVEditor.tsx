@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText, Sparkles, LogOut, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useProfile } from "@/hooks/useProfile";
-import { generateCV, downloadCV } from "@/services/api";
+import { generateCV, downloadCV, USE_FASTAPI } from "@/services/api";
 
 const CVEditor = () => {
   const navigate = useNavigate();

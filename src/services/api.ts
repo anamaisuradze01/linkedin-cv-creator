@@ -1,6 +1,9 @@
-// API service for FastAPI backend integration
-// Configure your FastAPI backend URL in .env as VITE_BACKEND_URL
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+// API service - uses Lovable Cloud edge function by default, 
+// or FastAPI backend if VITE_BACKEND_URL is explicitly set
+import { supabase } from "@/integrations/supabase/client";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const USE_FASTAPI = Boolean(BACKEND_URL);
 
 export interface LinkedInProfile {
   name: string;
@@ -13,36 +16,41 @@ export interface LinkedInProfile {
 }
 
 export interface GenerateCVPayload {
+  name: string;
   title: string;
-  skills: string;
-  experience: string;
-  phone: string;
+  skills: string[];
+  experience: string[];
+  phone?: string;
+  style?: string;
 }
 
 export interface GenerateCVResponse {
   success: boolean;
+  summary?: string;
   download_url?: string;
   error?: string;
 }
 
-// Redirect to LinkedIn OAuth via FastAPI
+// Redirect to LinkedIn OAuth via FastAPI (only when using FastAPI backend)
 export const loginWithLinkedIn = () => {
-  window.location.href = `${BACKEND_URL}/login`;
+  if (USE_FASTAPI) {
+    window.location.href = `${BACKEND_URL}/login`;
+  } else {
+    console.log("LinkedIn OAuth requires FastAPI backend. Set VITE_BACKEND_URL.");
+  }
 };
 
 // Fetch LinkedIn profile from FastAPI session
 export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
+  if (!USE_FASTAPI) return null;
+  
   try {
     const response = await fetch(`${BACKEND_URL}/api/profile`, {
       method: "GET",
-      credentials: "include", // Important for session cookies
+      credentials: "include",
     });
     
-    if (!response.ok) {
-      console.log("No profile found or not authenticated");
-      return null;
-    }
-    
+    if (!response.ok) return null;
     return await response.json();
   } catch (error) {
     console.error("Error fetching profile:", error);
@@ -50,14 +58,42 @@ export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
   }
 };
 
-// Generate CV using FastAPI backend
+// Generate CV using Lovable Cloud edge function or FastAPI
 export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCVResponse> => {
+  // Use Lovable Cloud edge function
+  if (!USE_FASTAPI) {
+    try {
+      console.log("Calling Lovable Cloud generate-cv function...");
+      
+      const { data, error } = await supabase.functions.invoke('generate-cv', {
+        body: payload,
+      });
+
+      if (error) {
+        console.error("Edge function error:", error);
+        return {
+          success: false,
+          error: error.message || "Failed to generate CV",
+        };
+      }
+
+      return data as GenerateCVResponse;
+    } catch (error) {
+      console.error("Error generating CV:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Network error",
+      };
+    }
+  }
+
+  // Use FastAPI backend
   try {
     const formData = new FormData();
     formData.append("title", payload.title);
-    formData.append("skills", payload.skills);
-    formData.append("experience", payload.experience);
-    formData.append("phone", payload.phone);
+    formData.append("skills", payload.skills.join(", "));
+    formData.append("experience", payload.experience.join("; "));
+    formData.append("phone", payload.phone || "");
 
     const response = await fetch(`${BACKEND_URL}/generate_cv`, {
       method: "POST",
@@ -73,18 +109,6 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
       };
     }
 
-    // The backend returns HTML with a download link
-    // Extract the download URL from the response
-    const data = await response.json().catch(() => null);
-    
-    if (data && data.link) {
-      return {
-        success: true,
-        download_url: `${BACKEND_URL}${data.link}`,
-      };
-    }
-
-    // If response is HTML template, we need to parse it
     return {
       success: true,
       download_url: `${BACKEND_URL}/download_cv`,
@@ -98,8 +122,10 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
   }
 };
 
-// Download the generated CV PDF
+// Download CV PDF from FastAPI
 export const downloadCV = async (path?: string): Promise<boolean> => {
+  if (!USE_FASTAPI) return false;
+  
   try {
     const url = path || `${BACKEND_URL}/download_cv`;
     const response = await fetch(url, {
@@ -107,11 +133,8 @@ export const downloadCV = async (path?: string): Promise<boolean> => {
       credentials: "include",
     });
 
-    if (!response.ok) {
-      return false;
-    }
+    if (!response.ok) return false;
 
-    // Create blob and trigger download
     const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -129,16 +152,18 @@ export const downloadCV = async (path?: string): Promise<boolean> => {
   }
 };
 
-// Logout from FastAPI session
+// Logout
 export const logout = async (): Promise<void> => {
-  try {
-    await fetch(`${BACKEND_URL}/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-  } catch (error) {
-    console.error("Error logging out:", error);
+  if (USE_FASTAPI) {
+    try {
+      await fetch(`${BACKEND_URL}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
   }
 };
 
-export { BACKEND_URL };
+export { BACKEND_URL, USE_FASTAPI };
