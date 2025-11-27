@@ -7,40 +7,66 @@ import { CVPreview } from "@/components/cv/CVPreview";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Sparkles, LogOut, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useProfile } from "@/hooks/useProfile";
-import { generateCV, downloadCV } from "@/services/api";
+import { generateCV, downloadCV, fetchProfileById, LinkedInProfile } from "@/services/api";
 
 const CVEditor = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const userId = searchParams.get("user_id");
   const useSample = searchParams.get("sample") === "true";
   
-  const { isLoading: authLoading, isAuthenticated, profile, handleLogout } = useProfile();
+  const [profile, setProfile] = useState<LinkedInProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData>(sampleProfileData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
   const cvPreviewRef = useRef<HTMLDivElement>(null);
 
-  // Load profile data when authenticated
+  // Fetch profile by user_id
   useEffect(() => {
-    if (profile && isAuthenticated && !useSample) {
-      setProfileData(prev => ({
-        ...prev,
-        fullName: profile.fullName || prev.fullName,
-        email: profile.email || prev.email,
-        // Keep sample data for other fields that LinkedIn doesn't provide
-      }));
-    }
-  }, [profile, isAuthenticated, useSample]);
+    const loadProfile = async () => {
+      if (userId) {
+        setIsLoading(true);
+        try {
+          const data = await fetchProfileById(userId);
+          if (data) {
+            setProfile(data);
+            // Update profile data with LinkedIn info
+            setProfileData(prev => ({
+              ...prev,
+              fullName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || prev.fullName,
+              email: data.email || prev.email,
+            }));
+          } else {
+            toast({
+              title: "Profile not found",
+              description: "Could not load your LinkedIn profile. Using sample data.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error("Error loading profile:", error);
+          toast({
+            title: "Error",
+            description: "Failed to load profile. Using sample data.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (useSample) {
+        setIsLoading(false);
+      } else {
+        // No user_id and not using sample - redirect to home
+        navigate("/");
+      }
+    };
 
-  // Redirect to login if not authenticated and not using sample
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated && !useSample) {
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, useSample, navigate]);
+    loadProfile();
+  }, [userId, useSample, navigate]);
+
+  const isAuthenticated = !!profile;
 
   const handleGenerateCV = async () => {
     setIsGenerating(true);
@@ -154,17 +180,17 @@ const CVEditor = () => {
     }
   };
 
-  const handleBack = async () => {
-    if (isAuthenticated) {
-      await handleLogout();
-    }
+  const handleBack = () => {
     navigate("/");
   };
 
-  if (authLoading && !useSample) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-form-bg flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -184,7 +210,7 @@ const CVEditor = () => {
             <div>
               <h1 className="font-serif text-xl font-semibold text-foreground">CV Builder</h1>
               <p className="text-sm text-muted-foreground">
-                {isAuthenticated ? "LinkedIn data loaded" : "Using sample data"}
+                {isAuthenticated ? `Welcome, ${profile?.firstName || 'User'}` : "Using sample data"}
               </p>
             </div>
           </div>
@@ -223,12 +249,12 @@ const CVEditor = () => {
               </span>
             </Button>
 
-            {/* Logout Button */}
+            {/* Back Button */}
             <Button 
               variant="ghost" 
               size="icon"
               onClick={handleBack}
-              title="Logout"
+              title="Back to Home"
             >
               <LogOut className="w-4 h-4" />
             </Button>
