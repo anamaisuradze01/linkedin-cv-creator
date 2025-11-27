@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText, Sparkles, LogOut, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useLinkedInAuth } from "@/hooks/useLinkedInAuth";
-import { generateCV, downloadCV, GenerateCVPayload } from "@/services/api";
+import { generateCVSummary } from "@/services/api";
 
 export const CVBuilder = () => {
   const { isAuthenticated, isLoading: authLoading, profile, login, logout } = useLinkedInAuth();
@@ -16,14 +16,20 @@ export const CVBuilder = () => {
   const [usingSampleData, setUsingSampleData] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [hasGeneratedCV, setHasGeneratedCV] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const cvPreviewRef = useRef<HTMLDivElement>(null);
 
   // Update profile data when LinkedIn profile is loaded
   useEffect(() => {
     if (profile && isAuthenticated) {
-      setProfileData(profile);
+      setProfileData(prev => ({
+        ...prev,
+        ...profile,
+        // Keep existing data if LinkedIn doesn't provide it
+        skills: profile.skills.length > 0 ? profile.skills : prev.skills,
+        education: profile.education.length > 0 ? profile.education : prev.education,
+        experience: profile.experience.length > 0 ? profile.experience : prev.experience,
+      }));
       setUsingSampleData(false);
     }
   }, [profile, isAuthenticated]);
@@ -37,25 +43,26 @@ export const CVBuilder = () => {
     setIsGenerating(true);
     
     try {
-      const payload: GenerateCVPayload = {
+      const result = await generateCVSummary({
+        name: profileData.fullName,
         title: profileData.title,
-        skills: profileData.skills.join(", "),
+        skills: profileData.skills,
         experience: profileData.experience.map(exp => 
           `${exp.title} at ${exp.company} (${exp.years}): ${exp.description}`
-        ).join("\n"),
-        phone: profileData.phone,
-      };
-
-      const result = await generateCV(payload);
+        ),
+        style: "minimal",
+      });
       
-      if (result.success) {
-        setHasGeneratedCV(true);
-        if (result.preview_html) {
-          setAiSummary(result.preview_html);
-        }
+      if (result.success && result.summary) {
+        setAiSummary(result.summary);
+        // Update the profile data with the AI-generated summary
+        setProfileData(prev => ({
+          ...prev,
+          summary: result.summary || prev.summary,
+        }));
         toast({
-          title: "CV Generated!",
-          description: "Your AI-enhanced CV is ready. You can now download it.",
+          title: "CV Enhanced!",
+          description: "Your AI-generated professional summary is ready.",
         });
       } else {
         toast({
@@ -76,37 +83,7 @@ export const CVBuilder = () => {
     }
   };
 
-  const handleDownloadFromBackend = async () => {
-    setIsDownloading(true);
-    
-    try {
-      const success = await downloadCV();
-      
-      if (success) {
-        toast({
-          title: "CV Downloaded!",
-          description: "Your CV has been saved as a PDF file.",
-        });
-      } else {
-        toast({
-          title: "Download Failed",
-          description: "Failed to download CV. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error downloading CV:", error);
-      toast({
-        title: "Error",
-        description: "Failed to download CV. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  // Client-side PDF download as fallback
+  // Client-side PDF download
   const handleDownloadPDF = async () => {
     if (!cvPreviewRef.current) return;
 
@@ -154,7 +131,6 @@ export const CVBuilder = () => {
     await logout();
     setProfileData(sampleProfileData);
     setUsingSampleData(false);
-    setHasGeneratedCV(false);
     setAiSummary(null);
   };
 
@@ -202,9 +178,9 @@ export const CVBuilder = () => {
               {isGenerating ? "Generating..." : "Generate with AI"}
             </Button>
 
-            {/* Download Button - Use backend if CV was generated, else client-side */}
+            {/* Download Button */}
             <Button 
-              onClick={hasGeneratedCV ? handleDownloadFromBackend : handleDownloadPDF} 
+              onClick={handleDownloadPDF} 
               disabled={isDownloading}
               className="gap-2"
             >
@@ -249,9 +225,9 @@ export const CVBuilder = () => {
                 <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">AI-Enhanced Summary</span>
+                    <span className="text-sm font-medium text-primary">AI-Enhanced Summary Applied</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{aiSummary}</p>
+                  <p className="text-sm text-muted-foreground">Your professional summary has been updated with AI-generated content.</p>
                 </div>
               )}
               <CVPreview ref={cvPreviewRef} data={profileData} />

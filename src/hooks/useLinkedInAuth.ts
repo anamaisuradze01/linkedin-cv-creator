@@ -1,74 +1,96 @@
 import { useState, useEffect, useCallback } from "react";
-import { getSessionProfile, loginWithLinkedIn, logout, LinkedInProfile } from "@/services/api";
+import { supabase } from "@/integrations/supabase/client";
+import { signInWithLinkedIn, signOut } from "@/services/api";
 import { ProfileData } from "@/types/cv";
+import { User, Session } from "@supabase/supabase-js";
 
 interface UseLinkedInAuthReturn {
   isAuthenticated: boolean;
   isLoading: boolean;
   profile: ProfileData | null;
-  login: () => void;
+  user: User | null;
+  login: () => Promise<void>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
 }
-
-// Convert LinkedIn profile to our ProfileData format
-const convertToProfileData = (linkedInProfile: LinkedInProfile): ProfileData => {
-  return {
-    fullName: linkedInProfile.fullName || "",
-    title: linkedInProfile.title || "",
-    email: linkedInProfile.email || "",
-    phone: "", // LinkedIn doesn't provide phone
-    location: linkedInProfile.location || "",
-    summary: linkedInProfile.summary || "",
-    skills: linkedInProfile.skills || [],
-    education: linkedInProfile.education || [],
-    experience: linkedInProfile.experience || [],
-    projects: [],
-    languages: [],
-  };
-};
 
 export const useLinkedInAuth = (): UseLinkedInAuthReturn => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
-  const checkAuth = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const linkedInProfile = await getSessionProfile();
-      if (linkedInProfile) {
-        setIsAuthenticated(true);
-        setProfile(convertToProfileData(linkedInProfile));
-      } else {
-        setIsAuthenticated(false);
-        setProfile(null);
+  // Convert Supabase user to ProfileData format
+  const convertToProfileData = (user: User): ProfileData => {
+    const metadata = user.user_metadata || {};
+    
+    return {
+      fullName: metadata.full_name || metadata.name || user.email?.split('@')[0] || "",
+      title: metadata.headline || "",
+      email: user.email || "",
+      phone: "",
+      location: metadata.location || "",
+      summary: "",
+      skills: [],
+      education: [],
+      experience: [],
+      projects: [],
+      languages: [],
+    };
+  };
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.email);
+        
+        if (session?.user) {
+          setUser(session.user);
+          setProfile(convertToProfileData(session.user));
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setProfile(null);
+          setIsAuthenticated(false);
+        }
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setIsAuthenticated(false);
-      setProfile(null);
-    } finally {
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        setProfile(convertToProfileData(session.user));
+        setIsAuthenticated(true);
+      }
       setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = useCallback(async () => {
+    try {
+      await signInWithLinkedIn();
+    } catch (error) {
+      console.error("Login failed:", error);
     }
   }, []);
 
   const handleLogout = useCallback(async () => {
-    await logout();
+    await signOut();
     setIsAuthenticated(false);
     setProfile(null);
+    setUser(null);
   }, []);
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
 
   return {
     isAuthenticated,
     isLoading,
     profile,
-    login: loginWithLinkedIn,
+    user,
+    login: handleLogin,
     logout: handleLogout,
-    checkAuth,
   };
 };
