@@ -30,13 +30,19 @@ export const loginWithLinkedIn = () => {
   window.location.href = `${BACKEND_URL}/login`;
 };
 
-// Fetch LinkedIn profile from FastAPI session
+// Fetch LinkedIn profile from FastAPI session with timeout
 export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
     const response = await fetch(`${BACKEND_URL}/api/profile`, {
       method: "GET",
       credentials: "include", // Important for session cookies
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       console.log("No profile found or not authenticated");
@@ -45,7 +51,11 @@ export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
     
     return await response.json();
   } catch (error) {
-    console.error("Error fetching profile:", error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log("Profile fetch timed out - backend may be starting up");
+    } else {
+      console.error("Error fetching profile:", error);
+    }
     return null;
   }
 };
