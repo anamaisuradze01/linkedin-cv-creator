@@ -1,0 +1,4 @@
+project_id = "fgodgwtevsmlzzmtjkyx"
+
+[functions.generate-cv]
+verify_jwt = false
