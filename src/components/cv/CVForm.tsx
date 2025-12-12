@@ -2,14 +2,16 @@ import { ProfileData, Education, Experience, Project } from "@/types/cv";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, User, Briefcase, GraduationCap, Code, Globe } from "lucide-react";
+import { Plus, Trash2, User, Briefcase, GraduationCap, Code, Globe, Sparkles } from "lucide-react";
 
 interface CVFormProps {
   data: ProfileData;
   onChange: (data: ProfileData) => void;
+  onRegenerateField?: (field: 'skills' | 'summary' | 'experience', index?: number) => void;
+  onClearAll?: () => void;
 }
 
-export const CVForm = ({ data, onChange }: CVFormProps) => {
+export const CVForm = ({ data, onChange, onRegenerateField, onClearAll }: CVFormProps) => {
   const updateField = <K extends keyof ProfileData>(field: K, value: ProfileData[K]) => {
     onChange({ ...data, [field]: value });
   };
@@ -56,8 +58,29 @@ export const CVForm = ({ data, onChange }: CVFormProps) => {
     updateField("projects", (data.projects || []).filter((_, i) => i !== index));
   };
 
+  const RegenerateButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors"
+      title="Regenerate with AI"
+    >
+      <Sparkles className="w-3 h-3" />
+      <span>Regenerate</span>
+    </button>
+  );
+
   return (
     <div className="space-y-6">
+      {/* Clear All Button */}
+      {onClearAll && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={onClearAll} className="text-muted-foreground">
+            Clear All
+          </Button>
+        </div>
+      )}
+
       {/* Personal Information */}
       <section className="form-section animate-fade-in">
         <div className="flex items-center gap-2 mb-4">
@@ -114,7 +137,12 @@ export const CVForm = ({ data, onChange }: CVFormProps) => {
           </div>
           
           <div>
-            <label className="input-label">Professional Summary</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="input-label">Professional Summary</label>
+              {onRegenerateField && (
+                <RegenerateButton onClick={() => onRegenerateField('summary')} />
+              )}
+            </div>
             <Textarea
               value={data.summary}
               onChange={(e) => updateField("summary", e.target.value)}
@@ -127,9 +155,14 @@ export const CVForm = ({ data, onChange }: CVFormProps) => {
 
       {/* Skills */}
       <section className="form-section animate-fade-in" style={{ animationDelay: "0.1s" }}>
-        <div className="flex items-center gap-2 mb-4">
-          <Code className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-serif font-semibold text-foreground">Skills</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Code className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-serif font-semibold text-foreground">Skills</h2>
+          </div>
+          {onRegenerateField && (
+            <RegenerateButton onClick={() => onRegenerateField('skills')} />
+          )}
         </div>
         
         <div>
@@ -194,7 +227,12 @@ export const CVForm = ({ data, onChange }: CVFormProps) => {
               </div>
               
               <div>
-                <label className="input-label">Description</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="input-label">Description</label>
+                  {onRegenerateField && (
+                    <RegenerateButton onClick={() => onRegenerateField('experience', index)} />
+                  )}
+                </div>
                 <Textarea
                   value={exp.description}
                   onChange={(e) => updateExperience(index, "description", e.target.value)}
