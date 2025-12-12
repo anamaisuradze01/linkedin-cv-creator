@@ -216,7 +216,7 @@ const CVEditor = () => {
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Generate CV Button - calls backend */}
+            {/* Tailor to Title Button - calls backend */}
             <Button 
               onClick={handleGenerateCV} 
               disabled={isGenerating}
@@ -229,7 +229,7 @@ const CVEditor = () => {
                 <Sparkles className="w-4 h-4" />
               )}
               <span className="hidden sm:inline">
-                {isGenerating ? "Generating..." : "Generate with AI"}
+                {isGenerating ? "Tailoring..." : "Tailor to Title"}
               </span>
             </Button>
 
@@ -268,7 +268,37 @@ const CVEditor = () => {
           {/* Left Column - Form (scrollable on desktop) */}
           <aside className="w-full lg:w-[420px] lg:flex-shrink-0">
             <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
-              <CVForm data={profileData} onChange={setProfileData} />
+              <CVForm 
+                data={profileData} 
+                onChange={setProfileData}
+                onRegenerateField={(field, index) => {
+                  // Placeholder for AI regeneration - will be implemented with backend
+                  console.log('Regenerate field:', field, index);
+                  toast({
+                    title: "Coming soon",
+                    description: `AI regeneration for ${field} will be available soon.`,
+                  });
+                }}
+                onClearAll={() => {
+                  setProfileData({
+                    fullName: "",
+                    title: "",
+                    email: "",
+                    phone: "",
+                    location: "",
+                    summary: "",
+                    skills: [],
+                    education: [{ school: "", degree: "", years: "" }],
+                    experience: [{ title: "", company: "", years: "", description: "" }],
+                    projects: [],
+                    languages: []
+                  });
+                  toast({
+                    title: "Cleared",
+                    description: "All fields have been cleared.",
+                  });
+                }}
+              />
             </div>
           </aside>
 
