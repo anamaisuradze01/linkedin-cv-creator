@@ -18,6 +18,9 @@ interface CVFormProps {
 export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
   const [regeneratingFields, setRegeneratingFields] = useState<Set<string>>(new Set());
 
+  // Debug logging for userId
+  console.log('CVForm received userId:', userId);
+
   const updateField = <K extends keyof ProfileData>(field: K, value: ProfileData[K]) => {
     onChange({ ...data, [field]: value });
   };
@@ -26,6 +29,8 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     index !== undefined ? `${field}-${index}` : field;
 
   const callRegenerateAPI = async (field: 'summary' | 'skills' | 'experience', index?: number) => {
+    console.log('Calling API with userId:', userId, 'field:', field, 'index:', index);
+    
     if (!userId) {
       toast({
         title: "Not authenticated",
