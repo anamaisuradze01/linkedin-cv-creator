@@ -3,37 +3,78 @@ import { ProfileData, Education, Experience, Project } from "@/types/cv";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, User, Briefcase, GraduationCap, Code, Globe, Sparkles } from "lucide-react";
+import { Plus, Trash2, User, Briefcase, GraduationCap, Code, Globe, Sparkles, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 interface CVFormProps {
   data: ProfileData;
   onChange: (data: ProfileData) => void;
-  userId: string; // Pass user_id from parent component
+  userId?: string;
   onClearAll?: () => void;
 }
 
 export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
+  const [regeneratingFields, setRegeneratingFields] = useState<Set<string>>(new Set());
+
   const updateField = <K extends keyof ProfileData>(field: K, value: ProfileData[K]) => {
     onChange({ ...data, [field]: value });
   };
 
+  const getFieldKey = (field: string, index?: number) => 
+    index !== undefined ? `${field}-${index}` : field;
+
   const callRegenerateAPI = async (field: 'summary' | 'skills' | 'experience', index?: number) => {
+    if (!userId) {
+      toast({
+        title: "Not authenticated",
+        description: "Please log in to use AI regeneration.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fieldKey = getFieldKey(field, index);
+    setRegeneratingFields(prev => new Set(prev).add(fieldKey));
+
     try {
       const params = new URLSearchParams({ user_id: userId, field });
       if (index !== undefined) params.append("index", index.toString());
 
-      const res = await fetch(`/api/regenerate?${params.toString()}`, { method: "POST" });
+      const res = await fetch(`${BACKEND_URL}/api/regenerate?${params.toString()}`, { 
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
       const json = await res.json();
 
-      if (json.status === "ok") {
+      if (json.status === "ok" && json.data) {
         onChange(json.data);
+        toast({
+          title: "Regenerated!",
+          description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated with AI.`,
+        });
       } else {
-        console.error("AI regeneration error:", json.error);
-        alert("Failed to regenerate AI content.");
+        throw new Error(json.error || "Failed to regenerate content");
       }
     } catch (err) {
-      console.error("Network error:", err);
-      alert("Failed to connect to the server.");
+      console.error("Regeneration error:", err);
+      toast({
+        title: "Regeneration failed",
+        description: err instanceof Error ? err.message : "Failed to connect to the server.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegeneratingFields(prev => {
+        const next = new Set(prev);
+        next.delete(fieldKey);
+        return next;
+      });
     }
   };
 
@@ -73,17 +114,27 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
   const removeProject = (index: number) => updateField("projects", (data.projects || []).filter((_, i) => i !== index));
 
   // ---------------- Regenerate Button ----------------
-  const RegenerateButton = ({ field, index }: { field: 'summary' | 'skills' | 'experience', index?: number }) => (
-    <button
-      type="button"
-      onClick={() => callRegenerateAPI(field, index)}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors"
-      title="Regenerate with AI"
-    >
-      <Sparkles className="w-3 h-3" />
-      <span>Regenerate</span>
-    </button>
-  );
+  const RegenerateButton = ({ field, index }: { field: 'summary' | 'skills' | 'experience', index?: number }) => {
+    const fieldKey = getFieldKey(field, index);
+    const isLoading = regeneratingFields.has(fieldKey);
+    
+    return (
+      <button
+        type="button"
+        onClick={() => callRegenerateAPI(field, index)}
+        disabled={isLoading}
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Regenerate with AI"
+      >
+        {isLoading ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <Sparkles className="w-3 h-3" />
+        )}
+        <span>{isLoading ? "Regenerating..." : "Regenerate"}</span>
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-6">

@@ -271,14 +271,7 @@ const CVEditor = () => {
               <CVForm 
                 data={profileData} 
                 onChange={setProfileData}
-                onRegenerateField={(field, index) => {
-                  // Placeholder for AI regeneration - will be implemented with backend
-                  console.log('Regenerate field:', field, index);
-                  toast({
-                    title: "Coming soon",
-                    description: `AI regeneration for ${field} will be available soon.`,
-                  });
-                }}
+                userId={userId || undefined}
                 onClearAll={() => {
                   setProfileData({
                     fullName: "",
