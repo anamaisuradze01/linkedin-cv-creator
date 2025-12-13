@@ -29,7 +29,8 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     index !== undefined ? `${field}-${index}` : field;
 
   const callRegenerateAPI = async (field: 'summary' | 'skills' | 'experience', index?: number) => {
-    console.log('Calling API with userId:', userId, 'field:', field, 'index:', index);
+    console.log('Making API call with:', { userId, field, index, BACKEND_URL });
+    console.log('Full API URL will be:', `${BACKEND_URL}/api/regenerate?user_id=${userId}&field=${field}${index !== undefined ? `&index=${index}` : ''}`);
     
     if (!userId) {
       toast({

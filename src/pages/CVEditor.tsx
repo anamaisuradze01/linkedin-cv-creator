@@ -15,6 +15,10 @@ const CVEditor = () => {
   const userId = searchParams.get("user_id");
   const useSample = searchParams.get("sample") === "true";
   
+  // Debug logging
+  console.log('CVEditor - Extracted userId from URL:', userId);
+  console.log('CVEditor - Full URL search params:', searchParams.toString());
+  
   const [profile, setProfile] = useState<LinkedInProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData>(sampleProfileData);
