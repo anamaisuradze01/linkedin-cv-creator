@@ -29,18 +29,6 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     index !== undefined ? `${field}-${index}` : field;
 
   const callRegenerateAPI = async (field: 'summary' | 'skills' | 'experience', index?: number) => {
-    console.log('Making API call with:', { userId, field, index, BACKEND_URL });
-    
-    // Special logging for experience regeneration
-    if (field === 'experience') {
-      console.log('🔍 Experience regeneration - index:', index);
-      console.log('🔍 Index type:', typeof index);
-      console.log('🔍 Is index undefined?:', index === undefined);
-      console.log('🔍 Experience API URL:', `${BACKEND_URL}/api/regenerate?user_id=${userId}&field=experience&index=${index}`);
-    }
-    
-    console.log('Full API URL will be:', `${BACKEND_URL}/api/regenerate?user_id=${userId}&field=${field}${index !== undefined ? `&index=${index}` : ''}`);
-    
     if (!userId) {
       toast({
         title: "Not authenticated",
@@ -54,34 +42,51 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     setRegeneratingFields(prev => new Set(prev).add(fieldKey));
 
     try {
-      const params = new URLSearchParams({ user_id: userId, field });
-      if (index !== undefined) params.append("index", index.toString());
+      const requestBody: any = {
+        user_id: userId,
+        field: field,
+      };
 
-      const res = await fetch(`${BACKEND_URL}/api/regenerate?${params.toString()}`, { 
+      // For experience, include index and the specific experience item data
+      if (field === 'experience' && index !== undefined) {
+        requestBody.index = index;
+        if (data.experience[index]) {
+          requestBody.experience_data = data.experience[index];
+        }
+      }
+
+      console.log('Sending request body:', requestBody);
+
+      const res = await fetch(`${BACKEND_URL}/api/regenerate`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
+        body: JSON.stringify(requestBody)
       });
 
       if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Backend error response:', errorData);
+        throw new Error(errorData.error || `Server error: ${res.status}`);
       }
 
       const json = await res.json();
+      console.log('Backend response:', json);
 
-      if (json.status === "ok" && json.data) {
-        // Merge the AI-generated field with existing data instead of replacing all
+      if (json.status === "ok") {
+        // Merge the regenerated value with existing data
         if (field === 'summary') {
-          onChange({ ...data, summary: json.data.summary });
+          onChange({ ...data, summary: json.value });
         } else if (field === 'skills') {
-          onChange({ ...data, skills: json.data.skills });
+          onChange({ ...data, skills: json.value });
         } else if (field === 'experience' && index !== undefined) {
           const updatedExperience = [...data.experience];
-          if (json.data.experience && json.data.experience[index]) {
-            updatedExperience[index] = {
-              ...updatedExperience[index],
-              description: json.data.experience[index].description
-            };
-          }
+          updatedExperience[index] = {
+            ...updatedExperience[index],
+            description: json.value
+          };
           onChange({ ...data, experience: updatedExperience });
         }
         toast({
