@@ -30,6 +30,15 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
 
   const callRegenerateAPI = async (field: 'summary' | 'skills' | 'experience', index?: number) => {
     console.log('Making API call with:', { userId, field, index, BACKEND_URL });
+    
+    // Special logging for experience regeneration
+    if (field === 'experience') {
+      console.log('🔍 Experience regeneration - index:', index);
+      console.log('🔍 Index type:', typeof index);
+      console.log('🔍 Is index undefined?:', index === undefined);
+      console.log('🔍 Experience API URL:', `${BACKEND_URL}/api/regenerate?user_id=${userId}&field=experience&index=${index}`);
+    }
+    
     console.log('Full API URL will be:', `${BACKEND_URL}/api/regenerate?user_id=${userId}&field=${field}${index !== undefined ? `&index=${index}` : ''}`);
     
     if (!userId) {
