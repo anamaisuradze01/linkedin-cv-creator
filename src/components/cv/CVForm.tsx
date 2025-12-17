@@ -22,12 +22,15 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     onChange({ ...data, [field]: value });
   };
 
-  const getFieldKey = (field: string, index?: number) =>
-    index !== undefined ? `${field}-${index}` : field;
+  const getFieldKey = (field: string, index?: number) => index !== undefined ? `${field}-${index}` : field;
 
   const callRegenerateAPI = async (field: 'summary' | 'skills' | 'experience', index?: number) => {
     if (!userId) {
-      toast({ title: "Not authenticated", description: "Please log in to use AI regeneration.", variant: "destructive" });
+      toast({
+        title: "Not authenticated",
+        description: "Please log in to use AI regeneration.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -35,10 +38,13 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     setRegeneratingFields(prev => new Set(prev).add(fieldKey));
 
     try {
+      // Send the full current form data to backend
+      const currentData: ProfileData = { ...data };
+
       const requestBody: any = {
         user_id: userId,
         field: field,
-        current_data: data, // <---- send full CV state to backend
+        current_data: currentData, // <-- send latest form data
       };
 
       if (field === 'experience' && index !== undefined) {
@@ -54,28 +60,33 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
       });
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Server error: ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${res.status}`);
       }
 
       const json = await res.json();
-
       if (json.status === "ok") {
-        // Update the field with regenerated value
         if (field === 'summary') updateField("summary", json.value);
         else if (field === 'skills') updateField("skills", json.value);
         else if (field === 'experience' && index !== undefined) {
-          const updatedExperience = [...data.experience];
-          updatedExperience[index] = { ...updatedExperience[index], description: json.value };
-          updateField("experience", updatedExperience);
+          const updatedExp = [...data.experience];
+          updatedExp[index] = { ...updatedExp[index], description: json.value };
+          updateField("experience", updatedExp);
         }
-
-        toast({ title: "Regenerated!", description: `${field.charAt(0).toUpperCase() + field.slice(1)} updated with AI.` });
+        toast({
+          title: "Regenerated!",
+          description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated with AI.`,
+        });
+      } else {
+        throw new Error(json.error || "Failed to regenerate content");
       }
-
     } catch (err) {
       console.error("Regeneration error:", err);
-      toast({ title: "Regeneration failed", description: err instanceof Error ? err.message : "Failed to connect to server", variant: "destructive" });
+      toast({
+        title: "Regeneration failed",
+        description: err instanceof Error ? err.message : "Failed to connect to the server.",
+        variant: "destructive",
+      });
     } finally {
       setRegeneratingFields(prev => {
         const next = new Set(prev);
@@ -85,25 +96,25 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     }
   };
 
-  // ------------------ Experience ------------------
+  // ---------------- Experience ----------------
   const updateExperience = (index: number, field: keyof Experience, value: string) => {
-    const newExp = [...data.experience];
-    newExp[index] = { ...newExp[index], [field]: value };
-    updateField("experience", newExp);
+    const newExperience = [...data.experience];
+    newExperience[index] = { ...newExperience[index], [field]: value };
+    updateField("experience", newExperience);
   };
   const addExperience = () => updateField("experience", [...data.experience, { title: "", company: "", years: "", description: "" }]);
   const removeExperience = (index: number) => updateField("experience", data.experience.filter((_, i) => i !== index));
 
-  // ------------------ Education ------------------
+  // ---------------- Education ----------------
   const updateEducation = (index: number, field: keyof Education, value: string) => {
-    const newEdu = [...data.education];
-    newEdu[index] = { ...newEdu[index], [field]: value };
-    updateField("education", newEdu);
+    const newEducation = [...data.education];
+    newEducation[index] = { ...newEducation[index], [field]: value };
+    updateField("education", newEducation);
   };
   const addEducation = () => updateField("education", [...data.education, { school: "", degree: "", years: "" }]);
   const removeEducation = (index: number) => updateField("education", data.education.filter((_, i) => i !== index));
 
-  // ------------------ Projects ------------------
+  // ---------------- Projects ----------------
   const updateProject = (index: number, field: keyof Project, value: string) => {
     const newProjects = [...(data.projects || [])];
     newProjects[index] = { ...newProjects[index], [field]: value };
@@ -112,7 +123,7 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
   const addProject = () => updateField("projects", [...(data.projects || []), { name: "", description: "" }]);
   const removeProject = (index: number) => updateField("projects", (data.projects || []).filter((_, i) => i !== index));
 
-  // ------------------ Regenerate Button ------------------
+  // ---------------- Regenerate Button ----------------
   const RegenerateButton = ({ field, index }: { field: 'summary' | 'skills' | 'experience', index?: number }) => {
     const fieldKey = getFieldKey(field, index);
     const isLoading = regeneratingFields.has(fieldKey);
@@ -125,7 +136,11 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
         className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Regenerate with AI"
       >
-        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+        {isLoading ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <Sparkles className="w-3 h-3" />
+        )}
         <span>{isLoading ? "Regenerating..." : "Regenerate"}</span>
       </button>
     );
@@ -135,7 +150,9 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
     <div className="space-y-6">
       {onClearAll && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={onClearAll} className="text-muted-foreground">Clear All</Button>
+          <Button variant="outline" size="sm" onClick={onClearAll} className="text-muted-foreground">
+            Clear All
+          </Button>
         </div>
       )}
 
@@ -147,27 +164,40 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
         </div>
 
         <div className="space-y-4">
-          <Input value={data.fullName} onChange={e => updateField("fullName", e.target.value)} placeholder="Full Name" />
-          <Input value={data.title} onChange={e => updateField("title", e.target.value)} placeholder="Professional Title" />
-
-          <div className="flex gap-3">
-            <Input type="email" value={data.email} onChange={e => updateField("email", e.target.value)} placeholder="Email" />
-            <Input value={data.phone} onChange={e => updateField("phone", e.target.value)} placeholder="Phone" />
+          <div>
+            <label className="input-label">Full Name</label>
+            <Input value={data.fullName} onChange={e => updateField("fullName", e.target.value)} placeholder="John Doe" />
           </div>
-          <Input value={data.location} onChange={e => updateField("location", e.target.value)} placeholder="Location" />
-
+          <div>
+            <label className="input-label">Professional Title</label>
+            <Input value={data.title} onChange={e => updateField("title", e.target.value)} placeholder="Software Engineer" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="input-label">Email</label>
+              <Input type="email" value={data.email} onChange={e => updateField("email", e.target.value)} placeholder="email@example.com" />
+            </div>
+            <div>
+              <label className="input-label">Phone</label>
+              <Input value={data.phone} onChange={e => updateField("phone", e.target.value)} placeholder="+1 (555) 123-4567" />
+            </div>
+          </div>
+          <div>
+            <label className="input-label">Location</label>
+            <Input value={data.location} onChange={e => updateField("location", e.target.value)} placeholder="City, Country" />
+          </div>
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="input-label">Professional Summary</label>
               <RegenerateButton field="summary" />
             </div>
-            <Textarea value={data.summary} onChange={e => updateField("summary", e.target.value)} className="min-h-[100px] resize-none" />
+            <Textarea value={data.summary} onChange={e => updateField("summary", e.target.value)} placeholder="A brief summary..." className="min-h-[100px] resize-none" />
           </div>
         </div>
       </section>
 
       {/* Skills */}
-      <section className="form-section animate-fade-in">
+      <section className="form-section animate-fade-in" style={{ animationDelay: "0.1s" }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Code className="w-5 h-5 text-primary" />
@@ -175,35 +205,65 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
           </div>
           <RegenerateButton field="skills" />
         </div>
-        <Textarea value={data.skills.join(", ")} onChange={e => updateField("skills", e.target.value.split(",").map(s => s.trim()).filter(Boolean))} className="min-h-[80px] resize-none" />
+        <div>
+          <label className="input-label">Skills (comma-separated)</label>
+          <Textarea
+            value={data.skills.join(", ")}
+            onChange={e => updateField("skills", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+            placeholder="JavaScript, React, Node.js..."
+            className="min-h-[80px] resize-none"
+          />
+        </div>
       </section>
 
       {/* Experience */}
-      <section className="form-section animate-fade-in">
+      <section className="form-section animate-fade-in" style={{ animationDelay: "0.2s" }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Briefcase className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-serif font-semibold text-foreground">Experience</h2>
           </div>
-          <Button variant="ghost" size="sm" onClick={addExperience} className="text-primary hover:text-primary/80"><Plus className="w-4 h-4 mr-1" /> Add</Button>
+          <Button variant="ghost" size="sm" onClick={addExperience} className="text-primary hover:text-primary/80">
+            <Plus className="w-4 h-4 mr-1" /> Add
+          </Button>
         </div>
 
-        {data.experience.map((exp, index) => (
-          <div key={index} className="p-4 bg-secondary/50 rounded-lg space-y-3 relative">
-            <button onClick={() => removeExperience(index)} className="absolute top-3 right-3 text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
+        <div className="space-y-4">
+          {data.experience.map((exp, index) => (
+            <div key={index} className="p-4 bg-secondary/50 rounded-lg space-y-3 relative">
+              <button onClick={() => removeExperience(index)} className="absolute top-3 right-3 text-muted-foreground hover:text-destructive transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
 
-            <Input value={exp.title} onChange={e => updateExperience(index, "title", e.target.value)} placeholder="Job Title" />
-            <Input value={exp.company} onChange={e => updateExperience(index, "company", e.target.value)} placeholder="Company" />
-            <Input value={exp.years} onChange={e => updateExperience(index, "years", e.target.value)} placeholder="Years" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="input-label">Job Title</label>
+                  <Input value={exp.title} onChange={e => updateExperience(index, "title", e.target.value)} placeholder="Software Engineer" />
+                </div>
+                <div>
+                  <label className="input-label">Company</label>
+                  <Input value={exp.company} onChange={e => updateExperience(index, "company", e.target.value)} placeholder="Company Name" />
+                </div>
+              </div>
 
-            <div className="flex items-center justify-between mb-1">
-              <label className="input-label">Description</label>
-              <RegenerateButton field="experience" index={index} />
+              <div>
+                <label className="input-label">Years</label>
+                <Input value={exp.years} onChange={e => updateExperience(index, "years", e.target.value)} placeholder="2020 - Present" />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="input-label">Description</label>
+                  <RegenerateButton field="experience" index={index} />
+                </div>
+                <Textarea value={exp.description} onChange={e => updateExperience(index, "description", e.target.value)} placeholder="Responsibilities and achievements..." className="min-h-[80px] resize-none" />
+              </div>
             </div>
-            <Textarea value={exp.description} onChange={e => updateExperience(index, "description", e.target.value)} className="min-h-[80px] resize-none" />
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
+
+      {/* Education, Projects, Languages remain unchanged */}
     </div>
   );
 };
