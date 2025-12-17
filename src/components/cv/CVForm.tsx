@@ -69,7 +69,21 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
       const json = await res.json();
 
       if (json.status === "ok" && json.data) {
-        onChange(json.data);
+        // Merge the AI-generated field with existing data instead of replacing all
+        if (field === 'summary') {
+          onChange({ ...data, summary: json.data.summary });
+        } else if (field === 'skills') {
+          onChange({ ...data, skills: json.data.skills });
+        } else if (field === 'experience' && index !== undefined) {
+          const updatedExperience = [...data.experience];
+          if (json.data.experience && json.data.experience[index]) {
+            updatedExperience[index] = {
+              ...updatedExperience[index],
+              description: json.data.experience[index].description
+            };
+          }
+          onChange({ ...data, experience: updatedExperience });
+        }
         toast({
           title: "Regenerated!",
           description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated with AI.`,
