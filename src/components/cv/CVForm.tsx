@@ -263,7 +263,90 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
         </div>
       </section>
 
-      {/* Education, Projects, Languages remain unchanged */}
+      {/* Education */}
+      <section className="form-section animate-fade-in" style={{ animationDelay: "0.3s" }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-serif font-semibold text-foreground">Education</h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={addEducation} className="text-primary hover:text-primary/80">
+            <Plus className="w-4 h-4 mr-1" /> Add
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {data.education.map((edu, index) => (
+            <div key={index} className="p-4 bg-secondary/50 rounded-lg space-y-3 relative">
+              <button onClick={() => removeEducation(index)} className="absolute top-3 right-3 text-muted-foreground hover:text-destructive transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
+
+              <div>
+                <label className="input-label">School/University</label>
+                <Input value={edu.school} onChange={e => updateEducation(index, "school", e.target.value)} placeholder="University Name" />
+              </div>
+              <div>
+                <label className="input-label">Degree</label>
+                <Input value={edu.degree} onChange={e => updateEducation(index, "degree", e.target.value)} placeholder="Bachelor of Science in Computer Science" />
+              </div>
+              <div>
+                <label className="input-label">Years</label>
+                <Input value={edu.years} onChange={e => updateEducation(index, "years", e.target.value)} placeholder="2016 - 2020" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Projects */}
+      <section className="form-section animate-fade-in" style={{ animationDelay: "0.4s" }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Code className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-serif font-semibold text-foreground">Projects</h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={addProject} className="text-primary hover:text-primary/80">
+            <Plus className="w-4 h-4 mr-1" /> Add
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {(data.projects || []).map((project, index) => (
+            <div key={index} className="p-4 bg-secondary/50 rounded-lg space-y-3 relative">
+              <button onClick={() => removeProject(index)} className="absolute top-3 right-3 text-muted-foreground hover:text-destructive transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
+
+              <div>
+                <label className="input-label">Project Name</label>
+                <Input value={project.name} onChange={e => updateProject(index, "name", e.target.value)} placeholder="Project Name" />
+              </div>
+              <div>
+                <label className="input-label">Description</label>
+                <Textarea value={project.description} onChange={e => updateProject(index, "description", e.target.value)} placeholder="Project description..." className="min-h-[80px] resize-none" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Languages */}
+      <section className="form-section animate-fade-in" style={{ animationDelay: "0.5s" }}>
+        <div className="flex items-center gap-2 mb-4">
+          <Globe className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-serif font-semibold text-foreground">Languages</h2>
+        </div>
+        <div>
+          <label className="input-label">Languages (comma-separated)</label>
+          <Textarea
+            value={(data.languages || []).join(", ")}
+            onChange={e => updateField("languages", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+            placeholder="English, Spanish, French..."
+            className="min-h-[80px] resize-none"
+          />
+        </div>
+      </section>
     </div>
   );
 };
