@@ -292,6 +292,48 @@ const CVEditor = () => {
               </p>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTailorToTitle}
+              disabled={isTailoring || !profileData.title.trim()}
+              className="hidden sm:flex"
+            >
+              {isTailoring ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-2" />
+              )}
+              Tailor to Title
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Download PDF
+            </Button>
+
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBack}
+                title="Leave"
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -302,6 +344,7 @@ const CVEditor = () => {
               data={profileData}
               onChange={setProfileData}
               userId={userId || undefined}
+              onClearAll={() => setProfileData(sampleProfileData)}
             />
           </aside>
 
