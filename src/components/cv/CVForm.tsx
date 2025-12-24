@@ -206,11 +206,11 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
           <RegenerateButton field="skills" />
         </div>
         <div>
-          <label className="input-label">Skills (comma-separated)</label>
+          <label className="input-label">Skills (separated by semicolon ;)</label>
           <Textarea
-            value={data.skills.join(", ")}
-            onChange={e => updateField("skills", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-            placeholder="JavaScript, React, Node.js..."
+            value={data.skills.join("; ")}
+            onChange={e => updateField("skills", e.target.value.split(";").map(s => s.trim()).filter(Boolean))}
+            placeholder="JavaScript, React; Node.js, Express; Python..."
             className="min-h-[80px] resize-none"
           />
         </div>
@@ -338,11 +338,11 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
           <h2 className="text-lg font-serif font-semibold text-foreground">Languages</h2>
         </div>
         <div>
-          <label className="input-label">Languages (comma-separated)</label>
+          <label className="input-label">Languages (separated by semicolon ;)</label>
           <Textarea
-            value={(data.languages || []).join(", ")}
-            onChange={e => updateField("languages", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-            placeholder="English, Spanish, French..."
+            value={(data.languages || []).join("; ")}
+            onChange={e => updateField("languages", e.target.value.split(";").map(s => s.trim()).filter(Boolean))}
+            placeholder="English (Native); Spanish (Fluent); French (Basic)..."
             className="min-h-[80px] resize-none"
           />
         </div>

@@ -148,9 +148,7 @@ export const generateCV = async (
 
 // ===== Tailoring =====
 
-export interface ProfileData {
-  [key: string]: unknown;
-}
+import type { ProfileData } from "@/types/cv";
 
 export interface TailorCVRequest {
   user_id: string;
