@@ -7,22 +7,23 @@ import { CVPreview } from "@/components/cv/CVPreview";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Sparkles, LogOut, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { generateCV, downloadCV, fetchProfileById, LinkedInProfile } from "@/services/api";
+import { generateCV, downloadCV, fetchProfileById, LinkedInProfile, tailorCVToTitle } from "@/services/api";
 
 const CVEditor = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get("user_id");
   const useSample = searchParams.get("sample") === "true";
-  
+
   // Debug logging
   console.log('CVEditor - Extracted userId from URL:', userId);
   console.log('CVEditor - Full URL search params:', searchParams.toString());
-  
+
   const [profile, setProfile] = useState<LinkedInProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData>(sampleProfileData);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isTailoring, setIsTailoring] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const cvPreviewRef = useRef<HTMLDivElement>(null);
@@ -39,7 +40,7 @@ const CVEditor = () => {
             // Update profile data with LinkedIn info
             setProfileData(prev => ({
               ...prev,
-              fullName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || prev.fullName,
+              fullName: ${data.firstName || ''} ${data.lastName || ''}.trim() || prev.fullName,
               email: data.email || prev.email,
             }));
           } else {
@@ -72,19 +73,65 @@ const CVEditor = () => {
 
   const isAuthenticated = !!profile;
 
+  // Function to tailor CV to current title
+  const handleTailorToTitle = async () => {
+    if (!profileData.title.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please enter your professional title first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTailoring(true);
+
+    try {
+      const result = await tailorCVToTitle({
+        user_id: userId || "sample",
+        job_title: profileData.title,
+        current_data: profileData,
+      });
+
+      if (result.success && result.tailored_data) {
+        setProfileData(result.tailored_data);
+        toast({
+          title: "CV Tailored!",
+          description: Your CV has been optimized for "${profileData.title}",
+        });
+      } else {
+        toast({
+          title: "Tailoring Failed",
+          description: result.error || "Failed to tailor CV. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error tailoring CV:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to the server. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTailoring(false);
+    }
+  };
+
+  // Function to generate PDF
   const handleGenerateCV = async () => {
     setIsGenerating(true);
-    
+
     try {
       const result = await generateCV({
         title: profileData.title,
         skills: profileData.skills.join(", "),
-        experience: profileData.experience.map(exp => 
-          `${exp.title} at ${exp.company} (${exp.years}): ${exp.description}`
+        experience: profileData.experience.map(exp =>
+          ${exp.title} at ${exp.company} (${exp.years}): ${exp.description}
         ).join("; "),
         phone: profileData.phone,
       });
-      
+
       if (result.success) {
         setDownloadUrl(result.download_url || null);
         toast({
@@ -112,10 +159,10 @@ const CVEditor = () => {
 
   const handleDownloadFromBackend = async () => {
     setIsDownloading(true);
-    
+
     try {
       const success = await downloadCV(downloadUrl || undefined);
-      
+
       if (success) {
         toast({
           title: "CV Downloaded!",
@@ -145,29 +192,29 @@ const CVEditor = () => {
     if (!cvPreviewRef.current) return;
 
     setIsDownloading(true);
-    
+
     try {
       const html2pdf = (await import("html2pdf.js")).default;
-      
+
       const element = cvPreviewRef.current;
       const opt = {
         margin: 0,
-        filename: `${profileData.fullName.replace(/\s+/g, "_")}_CV.pdf`,
+        filename: ${profileData.fullName.replace(/\s+/g, "_")}_CV.pdf,
         image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: { 
+        html2canvas: {
           scale: 2,
           useCORS: true,
           letterRendering: true,
         },
-        jsPDF: { 
-          unit: "mm" as const, 
-          format: "a4" as const, 
-          orientation: "portrait" as const 
+        jsPDF: {
+          unit: "mm" as const,
+          format: "a4" as const,
+          orientation: "portrait" as const
         },
       };
 
       await html2pdf().set(opt).from(element).save();
-      
+
       toast({
         title: "CV Downloaded!",
         description: "Your CV has been saved as a PDF file.",
@@ -214,32 +261,34 @@ const CVEditor = () => {
             <div>
               <h1 className="font-serif text-xl font-semibold text-foreground">CV Builder</h1>
               <p className="text-sm text-muted-foreground">
-                {isAuthenticated ? `Welcome, ${profile?.firstName || 'User'}` : "Using sample data"}
+                {isAuthenticated ? Welcome, ${profile?.firstName || 'User'} : "Using sample data"}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Tailor to Title Button - calls backend */}
-            <Button 
-              onClick={handleGenerateCV} 
-              disabled={isGenerating}
+            {/* Tailor to Title Button - calls tailoring API */}
+            <Button
+              onClick={handleTailorToTitle}
+              disabled={isTailoring}
               variant="outline"
               className="gap-2"
             >
-              {isGenerating ? (
+              {isTailoring ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
               <span className="hidden sm:inline">
-                {isGenerating ? "Tailoring..." : "Tailor to Title"}
+                {isTailoring ? "Tailoring..." : "Tailor to Title"}
               </span>
             </Button>
 
+
+
             {/* Download Button - from backend if generated, else client-side */}
-            <Button 
-              onClick={downloadUrl ? handleDownloadFromBackend : handleDownloadPDF} 
+            <Button
+              onClick={downloadUrl ? handleDownloadFromBackend : handleDownloadPDF}
               disabled={isDownloading}
               className="gap-2"
             >
@@ -254,8 +303,8 @@ const CVEditor = () => {
             </Button>
 
             {/* Back Button */}
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={handleBack}
               title="Back to Home"
@@ -272,8 +321,8 @@ const CVEditor = () => {
           {/* Left Column - Form (scrollable on desktop) */}
           <aside className="w-full lg:w-[420px] lg:flex-shrink-0">
             <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
-              <CVForm 
-                data={profileData} 
+              <CVForm
+                data={profileData}
                 onChange={setProfileData}
                 userId={userId || undefined}
                 onClearAll={() => {
@@ -312,7 +361,7 @@ const CVEditor = () => {
                   <p className="text-sm text-muted-foreground">Your AI-generated CV has been created. Click "Download PDF" to save it.</p>
                 </div>
               )}
-              
+
               {/* Live CV Preview */}
               <CVPreview ref={cvPreviewRef} data={profileData} />
             </div>
