@@ -11,7 +11,6 @@ export const CVPreview = forwardRef<HTMLDivElement, CVPreviewProps>(({ data }, r
     <div
       ref={ref}
       className="cv-paper w-full max-w-[210mm] mx-auto p-8 md:p-12 shadow-cv rounded-sm"
-      style={{ minHeight: "297mm" }}
     >
       {/* Header */}
       <header className="border-b border-cv-border pb-6 mb-6">
@@ -107,8 +106,17 @@ export const CVPreview = forwardRef<HTMLDivElement, CVPreviewProps>(({ data }, r
             {data.skills.map((skill, index) => (
               <span
                 key={index}
-                className="inline-block px-3 py-1 mr-2 mb-2 bg-[hsl(var(--cv-accent)/0.1)] text-[hsl(var(--cv-accent))] text-sm rounded-full leading-normal"
-                style={{ verticalAlign: 'middle' }}
+                style={{
+                  display: 'inline-block',
+                  padding: '4px 12px',
+                  marginRight: '8px',
+                  marginBottom: '8px',
+                  backgroundColor: 'hsl(142 76% 36% / 0.1)',
+                  color: 'hsl(142 76% 36%)',
+                  fontSize: '14px',
+                  borderRadius: '9999px',
+                  lineHeight: '1.4',
+                }}
               >
                 {skill}
               </span>
