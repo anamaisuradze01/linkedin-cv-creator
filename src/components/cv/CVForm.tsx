@@ -206,10 +206,10 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
           <RegenerateButton field="skills" />
         </div>
         <div>
-          <label className="input-label">Skills (separated by semicolon ;)</label>
+          <label className="input-label">Skills (type ; followed by space to separate)</label>
           <Textarea
-            value={data.skills.join("; ")}
-            onChange={e => updateField("skills", e.target.value.split(";").map(s => s.trim()).filter(Boolean))}
+            defaultValue={data.skills.join("; ")}
+            onBlur={e => updateField("skills", e.target.value.split(";").map(s => s.trim()).filter(Boolean))}
             placeholder="JavaScript, React; Node.js, Express; Python..."
             className="min-h-[80px] resize-none"
           />
@@ -338,10 +338,10 @@ export const CVForm = ({ data, onChange, userId, onClearAll }: CVFormProps) => {
           <h2 className="text-lg font-serif font-semibold text-foreground">Languages</h2>
         </div>
         <div>
-          <label className="input-label">Languages (separated by semicolon ;)</label>
+          <label className="input-label">Languages (type ; followed by space to separate)</label>
           <Textarea
-            value={(data.languages || []).join("; ")}
-            onChange={e => updateField("languages", e.target.value.split(";").map(s => s.trim()).filter(Boolean))}
+            defaultValue={(data.languages || []).join("; ")}
+            onBlur={e => updateField("languages", e.target.value.split(";").map(s => s.trim()).filter(Boolean))}
             placeholder="English (Native); Spanish (Fluent); French (Basic)..."
             className="min-h-[80px] resize-none"
           />
