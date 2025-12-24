@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +9,15 @@ import { useProfile } from "@/hooks/useProfile";
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useProfile();
+  const hasRedirected = useRef(false); // Prevent multiple redirects
 
   // Redirect to CV editor if already authenticated
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      navigate("/cv-editor");
+    // Prevent multiple redirects and ensure we only redirect once
+    if (!hasRedirected.current && !isLoading && isAuthenticated) {
+      hasRedirected.current = true;
+      console.log("Redirecting to /cv-editor (authenticated)");
+      navigate("/cv-editor", { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 
@@ -22,7 +26,8 @@ const Index = () => {
   };
 
   const handleTrySampleData = () => {
-    navigate("/cv-editor?sample=true");
+    console.log("Redirecting to /cv-editor (sample data)");
+    navigate("/cv-editor?sample=true", { replace: true });
   };
 
   if (isLoading) {
@@ -46,7 +51,7 @@ const Index = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
+          <Button
             onClick={handleLinkedInLogin}
             className="w-full gap-2 bg-[#0A66C2] hover:bg-[#004182]"
             size="lg"
@@ -54,7 +59,7 @@ const Index = () => {
             <Linkedin className="w-5 h-5" />
             Login with LinkedIn
           </Button>
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -63,9 +68,9 @@ const Index = () => {
               <span className="bg-card px-2 text-muted-foreground">or</span>
             </div>
           </div>
-          
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             onClick={handleTrySampleData}
             className="w-full gap-2"
             size="lg"
