@@ -103,11 +103,12 @@ export const CVPreview = forwardRef<HTMLDivElement, CVPreviewProps>(({ data }, r
           <h2 className="cv-heading text-lg font-serif font-semibold mb-3 uppercase tracking-wider">
             Skills
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <div>
             {data.skills.map((skill, index) => (
               <span
                 key={index}
-                className="px-3 py-1 bg-[hsl(var(--cv-accent)/0.1)] text-[hsl(var(--cv-accent))] text-sm rounded-full"
+                className="inline-block px-3 py-1 mr-2 mb-2 bg-[hsl(var(--cv-accent)/0.1)] text-[hsl(var(--cv-accent))] text-sm rounded-full leading-normal"
+                style={{ verticalAlign: 'middle' }}
               >
                 {skill}
               </span>
