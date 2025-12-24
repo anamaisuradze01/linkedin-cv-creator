@@ -27,7 +27,7 @@ export interface GenerateCVResponse {
 
 // Redirect to LinkedIn OAuth via FastAPI
 export const loginWithLinkedIn = () => {
-  window.location.href = `${BACKEND_URL}/login`;
+  window.location.href = ${BACKEND_URL}/login;
 };
 
 // Fetch LinkedIn profile by user_id
@@ -36,7 +36,7 @@ export const fetchProfileById = async (userId: string): Promise<LinkedInProfile 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    const response = await fetch(`${BACKEND_URL}/api/profile?user_id=${encodeURIComponent(userId)}`, {
+    const response = await fetch(${BACKEND_URL}/api/profile?user_id=${encodeURIComponent(userId)}, {
       method: "GET",
       credentials: "include",
       signal: controller.signal,
@@ -66,7 +66,7 @@ export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    const response = await fetch(`${BACKEND_URL}/api/profile`, {
+    const response = await fetch(${BACKEND_URL}/api/profile, {
       method: "GET",
       credentials: "include",
       signal: controller.signal,
@@ -99,7 +99,7 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
     formData.append("experience", payload.experience);
     formData.append("phone", payload.phone);
 
-    const response = await fetch(`${BACKEND_URL}/generate_cv`, {
+    const response = await fetch(${BACKEND_URL}/generate_cv, {
       method: "POST",
       credentials: "include",
       body: formData,
@@ -120,14 +120,14 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
     if (data && data.link) {
       return {
         success: true,
-        download_url: `${BACKEND_URL}${data.link}`,
+        download_url: ${BACKEND_URL}${data.link},
       };
     }
 
     // If response is HTML template, we need to parse it
     return {
       success: true,
-      download_url: `${BACKEND_URL}/download_cv`,
+      download_url: ${BACKEND_URL}/download_cv,
     };
   } catch (error) {
     console.error("Error generating CV:", error);
@@ -138,10 +138,56 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
   }
 };
 
+// Add this to your api.js file
+export interface TailorCVRequest {
+  user_id: string;
+  job_title: string;
+  current_data: ProfileData;
+}
+
+export interface TailorCVResponse {
+  success: boolean;
+  tailored_data?: ProfileData;
+  error?: string;
+}
+
+// Tailor CV to specific job title
+export const tailorCVToTitle = async (payload: TailorCVRequest): Promise<TailorCVResponse> => {
+  try {
+    const response = await fetch(${BACKEND_URL}/api/tailor, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || errorData.detail || "Failed to tailor CV",
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      tailored_data: data.tailored_data,
+    };
+  } catch (error) {
+    console.error("Error tailoring CV:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Network error",
+    };
+  }
+};
+
 // Download the generated CV PDF
 export const downloadCV = async (path?: string): Promise<boolean> => {
   try {
-    const url = path || `${BACKEND_URL}/download_cv`;
+    const url = path || ${BACKEND_URL}/download_cv;
     const response = await fetch(url, {
       method: "GET",
       credentials: "include",
@@ -172,7 +218,7 @@ export const downloadCV = async (path?: string): Promise<boolean> => {
 // Logout from FastAPI session
 export const logout = async (): Promise<void> => {
   try {
-    await fetch(`${BACKEND_URL}/logout`, {
+    await fetch(${BACKEND_URL}/logout, {
       method: "POST",
       credentials: "include",
     });
