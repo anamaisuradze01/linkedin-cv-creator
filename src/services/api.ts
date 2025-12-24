@@ -1,6 +1,7 @@
 // API service for FastAPI backend integration
 // Configure your FastAPI backend URL in .env as VITE_BACKEND_URL
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 export interface LinkedInProfile {
   name: string;
@@ -27,31 +28,36 @@ export interface GenerateCVResponse {
 
 // Redirect to LinkedIn OAuth via FastAPI
 export const loginWithLinkedIn = () => {
-  window.location.href = ${BACKEND_URL}/login;
+  window.location.href = `${BACKEND_URL}/login`;
 };
 
 // Fetch LinkedIn profile by user_id
-export const fetchProfileById = async (userId: string): Promise<LinkedInProfile | null> => {
+export const fetchProfileById = async (
+  userId: string
+): Promise<LinkedInProfile | null> => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    const response = await fetch(${BACKEND_URL}/api/profile?user_id=${encodeURIComponent(userId)}, {
-      method: "GET",
-      credentials: "include",
-      signal: controller.signal,
-    });
-    
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/profile?user_id=${encodeURIComponent(userId)}`,
+      {
+        method: "GET",
+        credentials: "include",
+        signal: controller.signal,
+      }
+    );
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
       console.log("No profile found for user_id:", userId);
       return null;
     }
-    
+
     return await response.json();
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       console.log("Profile fetch timed out - backend may be starting up");
     } else {
       console.error("Error fetching profile:", error);
@@ -65,23 +71,23 @@ export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(${BACKEND_URL}/api/profile, {
+
+    const response = await fetch(`${BACKEND_URL}/api/profile`, {
       method: "GET",
       credentials: "include",
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
       console.log("No profile found or not authenticated");
       return null;
     }
-    
+
     return await response.json();
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       console.log("Profile fetch timed out - backend may be starting up");
     } else {
       console.error("Error fetching profile:", error);
@@ -91,7 +97,9 @@ export const fetchProfile = async (): Promise<LinkedInProfile | null> => {
 };
 
 // Generate CV using FastAPI backend
-export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCVResponse> => {
+export const generateCV = async (
+  payload: GenerateCVPayload
+): Promise<GenerateCVResponse> => {
   try {
     const formData = new FormData();
     formData.append("title", payload.title);
@@ -99,7 +107,7 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
     formData.append("experience", payload.experience);
     formData.append("phone", payload.phone);
 
-    const response = await fetch(${BACKEND_URL}/generate_cv, {
+    const response = await fetch(`${BACKEND_URL}/generate_cv`, {
       method: "POST",
       credentials: "include",
       body: formData,
@@ -109,25 +117,25 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
       const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: errorData.error || errorData.detail || "Failed to generate CV",
+        error:
+          errorData.error ||
+          errorData.detail ||
+          "Failed to generate CV",
       };
     }
 
-    // The backend returns HTML with a download link
-    // Extract the download URL from the response
     const data = await response.json().catch(() => null);
-    
+
     if (data && data.link) {
       return {
         success: true,
-        download_url: ${BACKEND_URL}${data.link},
+        download_url: `${BACKEND_URL}${data.link}`,
       };
     }
 
-    // If response is HTML template, we need to parse it
     return {
       success: true,
-      download_url: ${BACKEND_URL}/download_cv,
+      download_url: `${BACKEND_URL}/download_cv`,
     };
   } catch (error) {
     console.error("Error generating CV:", error);
@@ -138,7 +146,12 @@ export const generateCV = async (payload: GenerateCVPayload): Promise<GenerateCV
   }
 };
 
-// Add this to your api.js file
+// ===== Tailoring =====
+
+export interface ProfileData {
+  [key: string]: unknown;
+}
+
 export interface TailorCVRequest {
   user_id: string;
   job_title: string;
@@ -152,9 +165,11 @@ export interface TailorCVResponse {
 }
 
 // Tailor CV to specific job title
-export const tailorCVToTitle = async (payload: TailorCVRequest): Promise<TailorCVResponse> => {
+export const tailorCVToTitle = async (
+  payload: TailorCVRequest
+): Promise<TailorCVResponse> => {
   try {
-    const response = await fetch(${BACKEND_URL}/api/tailor, {
+    const response = await fetch(`${BACKEND_URL}/api/tailor`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -166,7 +181,10 @@ export const tailorCVToTitle = async (payload: TailorCVRequest): Promise<TailorC
       const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: errorData.error || errorData.detail || "Failed to tailor CV",
+        error:
+          errorData.error ||
+          errorData.detail ||
+          "Failed to tailor CV",
       };
     }
 
@@ -187,7 +205,8 @@ export const tailorCVToTitle = async (payload: TailorCVRequest): Promise<TailorC
 // Download the generated CV PDF
 export const downloadCV = async (path?: string): Promise<boolean> => {
   try {
-    const url = path || ${BACKEND_URL}/download_cv;
+    const url = path || `${BACKEND_URL}/download_cv`;
+
     const response = await fetch(url, {
       method: "GET",
       credentials: "include",
@@ -197,7 +216,6 @@ export const downloadCV = async (path?: string): Promise<boolean> => {
       return false;
     }
 
-    // Create blob and trigger download
     const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -207,7 +225,7 @@ export const downloadCV = async (path?: string): Promise<boolean> => {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrl);
-    
+
     return true;
   } catch (error) {
     console.error("Error downloading CV:", error);
@@ -218,7 +236,7 @@ export const downloadCV = async (path?: string): Promise<boolean> => {
 // Logout from FastAPI session
 export const logout = async (): Promise<void> => {
   try {
-    await fetch(${BACKEND_URL}/logout, {
+    await fetch(`${BACKEND_URL}/logout`, {
       method: "POST",
       credentials: "include",
     });
