@@ -110,6 +110,7 @@ export const CVPreview = forwardRef<HTMLDivElement, CVPreviewProps>(({ data }, r
                   display: 'inline-block',
                   marginRight: '8px',
                   marginBottom: '8px',
+                  color: 'hsl(142 76% 36%)',
                   fontSize: '14px',
                   lineHeight: '1.4',
                 }}
@@ -144,10 +145,22 @@ export const CVPreview = forwardRef<HTMLDivElement, CVPreviewProps>(({ data }, r
           <h2 className="cv-heading text-lg font-serif font-semibold mb-3 uppercase tracking-wider">
             Languages
           </h2>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {data.languages.map((language, index) => (
-              <span key={index} className="cv-muted">{language}</span>
-            ))}
+          <div className="space-y-1 text-sm">
+            {data.languages.map((language, index) => {
+              // Parse format like "English (Native)" or just "English"
+              const match = language.match(/^(.+?)\s*\((.+?)\)$/);
+              const name = match ? match[1].trim() : language;
+              const level = match ? match[2].trim() : '';
+              
+              return (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="font-medium text-[hsl(var(--cv-heading))]">{name}</span>
+                  {level && (
+                    <span className="cv-muted text-xs">— {level}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
