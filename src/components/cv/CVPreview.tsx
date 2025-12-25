@@ -108,13 +108,9 @@ export const CVPreview = forwardRef<HTMLDivElement, CVPreviewProps>(({ data }, r
                 key={index}
                 style={{
                   display: 'inline-block',
-                  padding: '4px 12px',
                   marginRight: '8px',
                   marginBottom: '8px',
-                  backgroundColor: 'hsl(142 76% 36% / 0.1)',
-                  color: 'hsl(142 76% 36%)',
                   fontSize: '14px',
-                  borderRadius: '9999px',
                   lineHeight: '1.4',
                 }}
               >
